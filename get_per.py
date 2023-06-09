@@ -1,4 +1,51 @@
 import boto3
+from fuzzywuzzy import process
+import json
+
+def search_reference_id_in_pages(page_numbers, reference_id, bucket_name, json_file_name):
+    # Download the JSON file from S3
+    s3 = boto3.client('s3')
+    response = s3.get_object(Bucket=bucket_name, Key=json_file_name)
+    json_data = response['Body'].read().decode('utf-8')
+    textract_data = json.loads(json_data)
+
+    # Iterate over each page in the Textract data
+    for page in textract_data['Blocks']:
+        if 'Text' in page and 'Geometry' in page:
+            page_number = page['Page']
+            if page_number in page_numbers:
+                text = page['Text']
+                geometry = page['Geometry']['BoundingBox']
+
+                # Search for the reference ID within the page text
+                if reference_id in text:
+                    return {
+                        'page_number': page_number,
+                        'text': text,
+                        'coordinates': geometry
+                    }
+
+    return None
+
+# Example usage
+page_numbers = [1, 2, 3]
+reference_id = 'REF123'
+bucket_name = 'your-bucket-name'
+json_file_name = 'your-json-file-name.json'
+
+result = search_reference_id_in_pages(page_numbers, reference_id, bucket_name, json_file_name)
+if result:
+    print(f"Reference ID '{reference_id}' found in the specified pages.")
+    print("Page Number:", result['page_number'])
+    print("Text:", result['text'])
+    print("Coordinates:", result['coordinates'])
+else:
+    print(f"Reference ID '{reference_id}' not found in the specified pages.")
+
+
+
+
+import boto3
 import json
 import pandas as pd
 import re
