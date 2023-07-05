@@ -34,6 +34,158 @@ if __name__ == "__main__":
 
 
 
+def xtract_risk_code_digital(croped_image_dict, coordinates_dict, written_date, page_number, text_dict):
+    ref_risk_dict = {}
+    ref_pattern = "[A-Z]{3}[0-9]{3}[A-Z]{1}[0-9]{2}[A-Z]{2}"
+    ref_pattern1 = '(?e)(' + ref_pattern + '){e<=1}'
+    rx1 = regex.compile(ref_pattern1)
+    entity_list = ['510', '1880', '5307', '5332']
+    final_output = []
+    writ_line_pattern = "(\d*(\.\d+)?%)"
+    writ_line_dict = {}
+    entity_values = []
+
+    for key, value in croped_image_dict.items():
+        for entity in entity_list:
+            idx = value.find(entity)
+            if idx != -1:
+                entity_values.append(entity)
+
+        writ_line_values = []
+        for writ_mat in re.finditer(writ_line_pattern, value):
+            if re.search("written", value, re.I):
+                writ_line_values.append(writ_mat.group())
+
+        if len(writ_line_values) > 0:
+            for ref_match in rx1.finditer(value):
+                if ref_match.group() not in writ_line_dict:
+                    writ_line_dict[ref_match.group()] = []
+                writ_line_dict[ref_match.group()].extend(writ_line_values)
+
+    for key, value in croped_image_dict.items():
+        syd_list = [""]
+        ref_map_dict = {}
+        ref_match = ""
+        ref_text = value.replace(" ", "").upper()
+        syd_list = re.findall("510|1880|5307|5332", ref_text)
+        all_ref_matches = re.findall(ref_pattern, ref_text)
+
+        for ref_matches in rx1.finditer(ref_text):
+            mid_output = {}
+            ref_match = ref_matches.group()
+            search_string = " ".join(list(ref_match))
+            page_number = get_page_number(text_dict, search_string, page_number)
+            entity = ""
+            risk_code = []
+
+            for word in master_risk_code_list:
+                crop_value = value
+                for ref_entity_match in all_ref_matches:
+                    ref_search_string = " ".join(list(ref_entity_match))
+                    crop_value = crop_value.replace(ref_search_string, "")
+                crop_value_list = re.split(',+|\s+', crop_value)
+                for risk_code_value in crop_value_list:
+                    if risk_code_value == word:
+                        risk_code.append(word)
+
+            risk_code = list(set(risk_code))
+            ref_risk_dict[ref_match] = risk_code
+
+            if ref_match in writ_line_dict:
+                written_line_values = writ_line_dict[ref_match]
+                if len(written_line_values) > 0:
+                    written_lines = []
+                    for written_line in written_line_values:
+                        writ_line_value = round((float(written_line.split("%")[0]) * 0.80), 2)
+                        written_lines.append(writ_line_value)
+                    writ_line_value = max(written_lines)
+                else:
+                    writ_line_value = 0.0
+            else:
+                writ_line_value = 0.0
+
+            coords = coordinates_dict[value]
+            if len(entity_values) > 1:
+                if len(syd_list) > 1:
+                    if "510" in syd_list:
+                        entity = "510"
+                        syd_list.remove(entity)
+                        mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                                 "written_line": str(writ_line_value),
+                                                 "entity": entity,
+                                                 "written_date": written_date,
+                                                 "Risk_Code": risk_code,
+                                                 "page_number": str(page_number),
+                                                 "coordinates": coords}
+                    
+                    if "5307" in syd_list:
+                        entity = "5307"
+                        syd_list.remove(entity)
+                        mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                                 "written_line": str(writ_line_value),
+                                                 "entity": entity,
+                                                 "written_date": written_date,
+                                                 "Risk_Code": risk_code,
+                                                 "page_number": str(page_number),
+                                                 "coordinates": coords}
+                    
+                    if "1880" in syd_list:
+                        entity = "1880"
+                        syd_list.remove(entity)
+                        mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                                 "written_line": str(writ_line_value),
+                                                 "entity": entity,
+                                                 "written_date": written_date,
+                                                 "Risk_Code": risk_code,
+                                                 "page_number": str(page_number),
+                                                 "coordinates": coords}
+            
+                    if "5332" in syd_list:
+                        entity = "5332"
+                        syd_list.remove(entity)
+                        mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                                 "written_line": str(writ_line_value),
+                                                 "entity": entity,
+                                                 "written_date": written_date,
+                                                 "Risk_Code": risk_code,
+                                                 "page_number": str(page_number),
+                                                 "coordinates": coords}
+                else:
+                    if "510" in syd_list or "5307" in syd_list:
+                        entity = syd_list[0]
+                        mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                                 "written_line": str(writ_line_value),
+                                                 "entity": entity,
+                                                 "written_date": written_date,
+                                                 "Risk_Code": risk_code,
+                                                 "page_number": str(page_number),
+                                                 "coordinates": coords}
+                    elif "1880" in syd_list or "5332" in syd_list:
+                        entity = syd_list[0]
+                        mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                                 "written_line": str(writ_line_value),
+                                                 "entity": entity,
+                                                 "written_date": written_date,
+                                                 "Risk_Code": risk_code,
+                                                 "page_number": str(page_number),
+                                                 "coordinates": coords}
+            else:
+                if len(syd_list) > 0:
+                    entity = syd_list[0]
+                else:
+                    entity = ""
+                mid_output[ref_match] = {"overall_written_line": str(writ_line_value),
+                                         "written_line": str(writ_line_value),
+                                         "entity": entity,
+                                         "written_date": written_date,
+                                         "Risk_Code": risk_code,
+                                         "page_number": str(page_number),
+                                         "coordinates": coords}
+
+            if len(mid_output) > 0:
+                final_output.append(mid_output)
+
+    return final_output
 
 
 
